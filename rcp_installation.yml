@@ -1,0 +1,61 @@
+---
+- name: Install IEX and RCP on Windows
+  hosts: windows_servers  # Replace with your actual group/host
+  gather_facts: no
+  tasks:
+    - name: Create Temp folder if not exists
+      win_file:
+        path: C:\Temp
+        state: directory
+
+    - name: Check if IEX is already installed
+      win_command: 'Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -like "IEX TotalView*"}'
+      ignore_errors: yes
+      register: iex_check
+
+    - name: Uninstall IEX if already installed
+      win_command: 'msiexec /x {{ iex_check.stdout_lines[0] | regex_replace(".*{(.*?)}.*", "\\1") }} /qn'
+      ignore_errors: yes
+      when: iex_check.rc == 0
+
+    - name: Download IEX Installer
+      win_command: 'Copy-Item "\\\\fileserver\\installers\\IEXSetup.exe" -Destination "C:\\Temp\\IEXSetup.exe" -Force'
+      ignore_errors: yes
+
+    - name: Install IEX silently
+      win_command: 'C:\\Temp\\IEXSetup.exe /silent'
+      ignore_errors: yes
+
+    - name: Check if RCP is already installed
+      win_command: 'Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -like "RCP Softphone*"}'
+      ignore_errors: yes
+      register: rcp_check
+
+    - name: Uninstall RCP if already installed
+      win_command: 'msiexec /x {{ rcp_check.stdout_lines[0] | regex_replace(".*{(.*?)}.*", "\\1") }} /qn'
+      ignore_errors: yes
+      when: rcp_check.rc == 0
+
+    - name: Download RCP Installer
+      win_command: 'Copy-Item "\\\\fileserver\\installers\\RCPSetup.exe" -Destination "C:\\Temp\\RCPSetup.exe" -Force'
+      ignore_errors: yes
+
+    - name: Install RCP silently
+      win_command: 'C:\\Temp\\RCPSetup.exe /silent'
+      ignore_errors: yes
+
+    - name: Display installation result for IEX
+      win_command: 'Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -like "IEX TotalView*"}'
+      register: iex_result
+
+    - name: Display installation result for RCP
+      win_command: 'Get-WmiObject -Class Win32_Product | Where-Object {$_.Name -like "RCP Softphone*"}'
+      register: rcp_result
+
+    - name: Show IEX installation status
+      debug:
+        var: iex_result.stdout
+
+    - name: Show RCP installation status
+      debug:
+        var: rcp_result.stdout
